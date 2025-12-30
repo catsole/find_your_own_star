@@ -203,6 +203,10 @@
             .about-button { top: 20px; right: 20px; font-size: 12px; }
             .modal-sidebar { width: 85%; }
             .title-find-top, .title-find-bottom { font-size: 14vw; }
+            .input-card { width: 260px; padding: 24px 20px; border-radius: 20px; }
+            .input-card h3 { font-size: 16px; margin-bottom: 16px; }
+            .input-field { font-size: 12px; margin-bottom: 20px; }
+            .confirm-btn { font-size: 12px; padding: 8px 18px; }
         }
     </style>
 </head>
@@ -798,6 +802,23 @@
         let starName = "";
         let starNamed = false;
 
+        let scrollLockY = 0;
+        function lockScroll(forceY = null) {
+            if (forceY != null) {
+                ScrollTrigger.scroll(forceY);
+            }
+            scrollLockY = ScrollTrigger.scroll();
+            document.body.style.position = 'fixed';
+            document.body.style.top = `-${scrollLockY}px`;
+            document.body.style.width = '100%';
+        }
+        function unlockScroll() {
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+            ScrollTrigger.scroll(scrollLockY);
+        }
+
         // 1. Mouse Move (Hover Effect)
         window.addEventListener('mousemove', (event) => {
             if(isNaming) return;
@@ -842,6 +863,8 @@
             if (intersects.length > 0) {
                 isNaming = true;
                 nameModal.classList.add('active');
+                const maxY = ScrollTrigger.maxScroll(window);
+                lockScroll(maxY);
                 starNameInput.value = "";
                 setTimeout(() => starNameInput.focus(), 100);
             }
@@ -856,6 +879,7 @@
                 starNamed = true;
                 nameModal.classList.remove('active');
                 isNaming = false;
+                unlockScroll();
             }
         }
         confirmNameBtn.addEventListener('click', confirmName);
@@ -867,6 +891,7 @@
             if (e.target !== nameModal) return;
             nameModal.classList.remove('active');
             isNaming = false;
+            unlockScroll();
         });
         
         // --- Render Loop ---
