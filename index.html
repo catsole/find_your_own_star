@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find Your Own Star</title>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/wanteddev/wanted-sans@v1.0.1/packages/wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.min.css');
+        
+        body { 
+            margin: 0; 
+            overflow-x: hidden; 
+            background: #000; 
+            font-family: 'Wanted Sans Variable', 'Wanted Sans', sans-serif; 
+            font-weight: 500; 
+        }
+        
+        canvas { display: block; }
+        .experience { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; z-index: 1; outline: none; }
+        .scrollTarget { position: absolute; width: 100%; height: 2000vh; top: 0; z-index: 0; pointer-events: none;}
+
+        .black-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100vh; 
+            background: #000; z-index: 2; opacity: 1; pointer-events: none;
+        }
+
+        .telescope-mask {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100vh; 
+            z-index: 6; pointer-events: none; display: flex; 
+            justify-content: center; align-items: center; opacity: 0;
+            transform-origin: center center;
+            background: transparent; 
+        }
+        .telescope-mask svg { width: 100%; height: 100%; display: block; }
+
+        .intro-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100vh; 
+            z-index: 10; pointer-events: none; overflow: hidden;
+        }
+
+        .text-slide { position: absolute; width: 100%; height: 100%; opacity: 0; }
+        .slide-1 { display: flex; justify-content: center; align-items: center; z-index: 10; }
+        .title-anchor {
+            font-size: 5vw; font-weight: 500; color: #fff;
+            white-space: nowrap; letter-spacing: -0.02em; margin: 0; text-align: left;
+        }
+        .slide-2 { display: block; z-index: 3; }
+        .title-find-top, .title-find-bottom {
+            position: absolute; font-weight: 500; color: #fff; letter-spacing: -0.05em;
+            font-size: 13vw; line-height: 1; white-space: nowrap;
+        }
+        .title-find-top { top: 15%; left: 5%; text-align: left; }
+        .title-find-bottom { bottom: 15%; right: 5%; text-align: right; }
+        
+        .about-button {
+            position: fixed; top: 40px; right: 40px; z-index: 100;
+            padding: 12px 30px;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            border-radius: 999px;
+            color: #fff; cursor: pointer; transition: all 0.3s;
+            font-family: 'Wanted Sans Variable', 'Wanted Sans', sans-serif;
+            font-weight: 500; font-size: 14px; letter-spacing: -0.01em;
+            backdrop-filter: blur(16px) saturate(140%);
+            -webkit-backdrop-filter: blur(16px) saturate(140%);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 8px 24px rgba(0,0,0,0.25);
+        }
+        .about-button:hover { background: rgba(255, 255, 255, 0.18); border-color: rgba(255, 255, 255, 0.35); }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
+            background: rgba(0, 0, 0, 0.3); z-index: 199;
+            opacity: 0; pointer-events: none; transition: opacity 0.5s ease;
+        }
+        .modal-overlay.open { opacity: 1; pointer-events: auto; }
+
+        .modal-sidebar {
+            position: fixed; top: 0; right: 0; height: 100%; width: 30vw; max-width: 560px; min-width: 320px;
+            background: rgba(255, 255, 255, 0.78); backdrop-filter: blur(22px) saturate(140%);
+            -webkit-backdrop-filter: blur(22px) saturate(140%);
+            border-left: 1px solid rgba(255, 255, 255, 0.25); z-index: 200;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255,255,255,0.35);
+            transform: translateX(100%); transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .modal-sidebar.open { transform: translateX(0); }
+        
+        .close-modal-btn {
+            position: absolute; top: 50%; left: 0; width: 56px; height: 56px;
+            border-radius: 50%; background: rgba(255, 255, 255, 0.78); border: 1px solid rgba(255, 255, 255, 0.3);
+            display: flex; justify-content: center; align-items: center; cursor: pointer;
+            z-index: 10; transform: translate(-50%, -50%);
+            opacity: 0; visibility: hidden; pointer-events: none; transition: 0.3s;
+            backdrop-filter: blur(22px) saturate(140%);
+            -webkit-backdrop-filter: blur(22px) saturate(140%);
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255,255,255,0.45);
+        }
+        .modal-sidebar.open .close-modal-btn { opacity: 1; visibility: visible; pointer-events: auto; }
+        .close-modal-btn:hover { transform: translate(-50%, -50%) scale(1.1); }
+        
+        .modal-inner { height: 100%; overflow-y: auto; padding: 6px 40px 36px; box-sizing: border-box; color: #111; }
+        .modal-inner h2 { font-size: 64px; margin-bottom: 1.2rem; letter-spacing: -0.02em; font-weight: 500; color: #0A0A0A; }
+        .modal-inner p { font-size: 14px; line-height: 1.5; color: #717171; margin-bottom: 0.8rem; font-weight: 400; letter-spacing: -0.02em; word-break: keep-all; line-break: strict; }
+        .text-en p { font-weight: 300; letter-spacing: -0.01em; }
+        .modal-divider { width: 100%; height: 1px; background: #ddd; margin: 1.5rem 0; }
+
+        /* --- UI: Name Input Modal --- */
+        .name-input-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center;
+            z-index: 300; background: rgba(0,0,0,0.5); backdrop-filter: blur(10px) saturate(120%);
+            -webkit-backdrop-filter: blur(10px) saturate(120%);
+            opacity: 0; pointer-events: none; transition: opacity 0.4s ease;
+        }
+        .name-input-modal.active { opacity: 1; pointer-events: auto; }
+
+        .input-card {
+            background: rgba(255, 255, 255, 0.78);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.45);
+            padding: 36px 32px; border-radius: 24px;
+            text-align: center; width: 320px;
+            transform: scale(0.9); transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            backdrop-filter: blur(22px) saturate(140%);
+            -webkit-backdrop-filter: blur(22px) saturate(140%);
+        }
+        .name-input-modal.active .input-card { transform: scale(1); }
+
+        .input-card h3 { color: #0A0A0A; margin: 0 0 24px 0; font-size: 20px; font-weight: 500; letter-spacing: -0.02em; }
+        .input-field {
+            width: 100%; padding: 10px 0; background: transparent; border: none;
+            border-bottom: 1px solid rgba(0,0,0,0.15); color: #0A0A0A; font-size: 14px;
+            text-align: center; font-family: inherit; outline: none; margin-bottom: 28px;
+            transition: border-color 0.3s; letter-spacing: -0.02em;
+        }
+        .input-field:focus { border-bottom-color: rgba(0,0,0,0.35); }
+        
+        .confirm-btn {
+            background: rgba(255, 255, 255, 0.12); color: #0A0A0A; border: 1px solid rgba(255, 255, 255, 0.25);
+            padding: 10px 24px; border-radius: 999px;
+            font-size: 14px; font-weight: 500; cursor: pointer; transition: 0.2s;
+            letter-spacing: -0.02em;
+            backdrop-filter: blur(16px) saturate(140%);
+            -webkit-backdrop-filter: blur(16px) saturate(140%);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 8px 24px rgba(0,0,0,0.2);
+        }
+        .confirm-btn:hover { background: #ffdd88; transform: scale(1.05); }
+
+        /* --- UI: Floating Label (Fixed Position) --- */
+        .hover-hint {
+            position: fixed;
+            top: 0; left: 0;
+            pointer-events: none;
+            opacity: 0;
+            z-index: 60;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            padding: 10px 16px;
+            border-radius: 999px;
+            backdrop-filter: blur(16px) saturate(140%);
+            -webkit-backdrop-filter: blur(16px) saturate(140%);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 8px 24px rgba(0,0,0,0.25);
+            transform: translate3d(0, 0, 0);
+            transition: opacity 0.2s ease;
+            display: inline-flex; align-items: center; gap: 8px;
+        }
+
+        .hover-hint-icon {
+            width: 16px; height: 16px; flex: 0 0 16px;
+            display: inline-block;
+            filter: drop-shadow(0 0 6px rgba(255,255,255,0.6));
+        }
+
+        .star-label {
+            position: fixed; /* absolute -> fixed 변경 */
+            top: 0; left: 0; 
+            pointer-events: none; 
+            display: flex; flex-direction: column; align-items: center;
+            opacity: 0; 
+            z-index: 50; 
+            will-change: transform, opacity; /* 성능 최적화 */
+        }
+        
+        .label-text {
+            font-size: 14px; font-weight: 500; letter-spacing: -0.01em; text-transform: uppercase;
+            color: #fff; text-shadow: none;
+            background: rgba(255, 255, 255, 0.12); padding: 10px 18px; border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            backdrop-filter: blur(16px) saturate(140%);
+            -webkit-backdrop-filter: blur(16px) saturate(140%);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 8px 24px rgba(0,0,0,0.25);
+        }
+        .label-line {
+            width: 1px; height: 30px;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.35), transparent);
+        }
+
+        @media (max-width: 768px) {
+            .about-button { top: 20px; right: 20px; font-size: 12px; }
+            .modal-sidebar { width: 85%; }
+            .title-find-top, .title-find-bottom { font-size: 14vw; }
+        }
+    </style>
+</head>
+<body>
+    <button class="about-button">About</button>
+
+    <div class="modal-overlay"></div>
+    <div class="modal-sidebar">
+        <button class="close-modal-btn">
+            <svg viewBox="0 0 20 20" fill="none" stroke="#000" stroke-width="1.5" stroke-linecap="round" style="width:20px;height:20px;">
+                <path d="M5 5L15 15M15 5L5 15"></path>
+            </svg>
+        </button>
+        <div class="modal-inner">
+            <h2>About</h2>
+            <div class="text-group">
+                <p>우리는 끝없이 생성되는 레퍼런스의 우주 속을 걷고 있습니다.</p>
+                <p>디자인은 이제 단순히 ‘처음 만드는 것’보다, 수많은 변주 속에서 나만의 별을 찾아 맥락을 부여하는 일에 가깝습니다.</p>
+                <p>천문학자가 새로운 별을 발견해 이름을 지어주듯, 디자이너는 정보의 홍수 속에서 나만의 것을 기준에 맞게 발견하고 맥락을 부여합니다.</p>
+                <p>이 웹사이트는 그 과정—발견, 선택, 이름짓기—를 시각화한 여정입니다.</p>
+            </div>
+            <div class="modal-divider"></div>
+            <div class="text-group text-en">
+                <p>We walk through a universe of endlessly generated references.</p>
+                <p>Design today is less about making the first thing, and more about finding a star among countless variations and giving it context.</p>
+                <p>Like astronomers who discover new stars and name them, designers find what fits their criteria within a flood of information and give it meaning.</p>
+                <p>This website visualizes that journey—discovery, selection, and naming.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="name-input-modal" id="nameModal">
+        <div class="input-card">
+            <h3>Name Your Star</h3>
+            <input type="text" class="input-field" id="starNameInput" placeholder="Enter name..." maxlength="12" autocomplete="off">
+            <button class="confirm-btn" id="confirmNameBtn">Confirm</button>
+        </div>
+    </div>
+
+    <div class="hover-hint" id="hoverHint">
+        <img class="hover-hint-icon" src="click.svg" alt="" aria-hidden="true">
+        <span>새로운 별 발견!</span>
+    </div>
+
+    <div class="star-label" id="starLabel">
+        <div class="label-text" id="labelText">MY STAR</div>
+        <div class="label-line"></div>
+    </div>
+
+    <div class="black-overlay"></div>
+    <div class="intro-container">
+        <div class="text-slide slide-1" style="opacity: 1;">
+            <h1 class="title-anchor">The future of originality is curation, not creation — we don't create the first star, we find one and give it meaning.</h1>
+        </div>
+        <div class="text-slide slide-2">
+            <div class="title-find-top">Find Your</div>
+            <div class="title-find-bottom">Own Star</div>
+        </div>
+    </div>
+
+    <div class="telescope-mask">
+        <svg viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+            <defs>
+                <mask id="binocularMask">
+                    <rect width="1920" height="1080" fill="white"/>
+                    <circle cx="720" cy="540" r="300" fill="black"/>
+                    <circle cx="1200" cy="540" r="300" fill="black"/>
+                </mask>
+            </defs>
+            <rect width="1920" height="1080" fill="black" mask="url(#binocularMask)"/>
+        </svg>
+    </div>
+
+    <canvas class="experience"></canvas>
+    <div class="scrollTarget"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r124/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+    <script src="https://unpkg.com/three@0.124.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://unpkg.com/three@0.124.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://unpkg.com/three@0.124.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://unpkg.com/three@0.124.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://unpkg.com/three@0.124.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://unpkg.com/three@0.124.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+
+    <script>
+        // --- About Modal Logic ---
+        const aboutBtn = document.querySelector('.about-button');
+        const modalOverlay = document.querySelector('.modal-overlay');
+        const modalSidebar = document.querySelector('.modal-sidebar');
+        const closeModalBtn = document.querySelector('.close-modal-btn');
+        function openAbout() { modalOverlay.classList.add('open'); modalSidebar.classList.add('open'); }
+        function closeAbout() { modalOverlay.classList.remove('open'); modalSidebar.classList.remove('open'); }
+        aboutBtn.addEventListener('click', openAbout);
+        closeModalBtn.addEventListener('click', closeAbout);
+        modalOverlay.addEventListener('click', closeAbout);
+
+        // --- Three.js Setup ---
+        const canvas = document.querySelector('canvas');
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000008); 
+        scene.fog = new THREE.FogExp2(0x000008, 0.0006);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 60000);
+        
+        const texLoader = new THREE.TextureLoader();
+        
+        const planetTex = texLoader.load('https://i.ibb.co/hcN2qXk/star-nc8wkw.jpg');
+        const starParticleTex = texLoader.load("https://i.ibb.co/ZKsdYSz/p1-g3zb2a.png");
+        const noise = new SimplexNoise();
+
+        function createSoftStarTexture() {
+            const canvas = document.createElement('canvas');
+            const size = 64;
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const cx = size / 2;
+            const cy = size / 2;
+            const r = size * 0.34;
+
+            const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 1.8);
+            glow.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+            glow.addColorStop(0.45, 'rgba(255, 255, 255, 0.35)');
+            glow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+            ctx.fillStyle = glow;
+            ctx.beginPath();
+            ctx.arc(cx, cy, r * 1.8, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            ctx.fill();
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.minFilter = THREE.LinearFilter;
+            tex.magFilter = THREE.LinearFilter;
+            tex.generateMipmaps = false;
+            return tex;
+        }
+
+        const softStarTex = createSoftStarTexture();
+
+        function createHaloStarTexture() {
+            const canvas = document.createElement('canvas');
+            const size = 64;
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const cx = size / 2;
+            const cy = size / 2;
+            const r = size * 0.32;
+
+            const ring = ctx.createRadialGradient(cx, cy, r * 0.6, cx, cy, r * 1.4);
+            ring.addColorStop(0, 'rgba(255, 255, 255, 0)');
+            ring.addColorStop(0.55, 'rgba(255, 255, 255, 0.25)');
+            ring.addColorStop(0.75, 'rgba(255, 255, 255, 0.6)');
+            ring.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+            ctx.fillStyle = ring;
+            ctx.beginPath();
+            ctx.arc(cx, cy, r * 1.4, 0, Math.PI * 2);
+            ctx.fill();
+
+            const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.6);
+            core.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+            core.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = core;
+            ctx.beginPath();
+            ctx.arc(cx, cy, r * 0.6, 0, Math.PI * 2);
+            ctx.fill();
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.minFilter = THREE.LinearFilter;
+            tex.magFilter = THREE.LinearFilter;
+            tex.generateMipmaps = false;
+            return tex;
+        }
+
+        const haloStarTex = createHaloStarTexture();
+
+        // --- Starfield Background ---
+        const starfieldUniforms = {
+            uTime: { value: 0 },
+            uColorA: { value: new THREE.Color(0x0b0f1f) },
+            uColorB: { value: new THREE.Color(0x1a2348) },
+            uStarColor: { value: new THREE.Color(0xcfe7ff) },
+        };
+
+        const starfieldMat = new THREE.ShaderMaterial({
+            uniforms: starfieldUniforms,
+            side: THREE.BackSide,
+            vertexShader: `
+                varying vec2 vUv;
+                void main() {
+                    vUv = uv;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                varying vec2 vUv;
+                uniform float uTime;
+                uniform vec3 uColorA;
+                uniform vec3 uColorB;
+                uniform vec3 uStarColor;
+
+                float hash(vec2 p) {
+                    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+                }
+
+                void main() {
+                    vec2 uv = vUv;
+                    vec3 col = mix(uColorA, uColorB, uv.y);
+
+                    float h1 = hash(floor(uv * 900.0));
+                    float h2 = hash(floor(uv * 240.0) + 17.0);
+                    float stars = step(0.9986, h1) + step(0.9992, h2) * 0.6;
+                    float twinkle = 0.6 + 0.4 * sin(uTime * 1.2 + h2 * 6.2831);
+
+                    float nebula = sin((uv.x * 6.0 + uv.y * 4.0) + uTime * 0.05);
+                    nebula = smoothstep(0.1, 0.9, nebula) * 0.06;
+
+                    col += uStarColor * stars * twinkle;
+                    col += vec3(0.06, 0.08, 0.12) * nebula;
+
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+        });
+
+        const starfieldGeo = new THREE.SphereGeometry(6000, 32, 32);
+        const starfieldMesh = new THREE.Mesh(starfieldGeo, starfieldMat);
+        scene.add(starfieldMesh);
+
+        // --- Tunnel: Cosmic Ray Shader ---
+        const tunnelUniforms = {
+            uTime: { value: 0 },
+            uSpeed: { value: 0.45 },
+            uOpacity: { value: 0 },
+            uColorA: { value: new THREE.Color(0x7fb3ff) },
+            uColorB: { value: new THREE.Color(0xa777ff) },
+            uColorC: { value: new THREE.Color(0x7cffd9) },
+        };
+
+        const tunnelMat = new THREE.ShaderMaterial({
+            uniforms: tunnelUniforms,
+            transparent: true,
+            side: THREE.BackSide,
+            blending: THREE.AdditiveBlending,
+            vertexShader: `
+                varying vec2 vUv;
+                void main() {
+                    vUv = uv;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                varying vec2 vUv;
+                uniform float uTime;
+                uniform float uSpeed;
+                uniform float uOpacity;
+                uniform vec3 uColorA;
+                uniform vec3 uColorB;
+                uniform vec3 uColorC;
+
+                void main() {
+                    float angle = vUv.y * 6.283185;
+                    float raysA = pow(abs(sin(angle * 18.0 + sin(angle * 4.0) * 1.2)), 10.0);
+                    float raysB = pow(abs(sin(angle * 36.0 + uTime * 0.8)), 8.0);
+                    float rays = max(raysA, raysB);
+
+                    float flow = fract(vUv.x * 6.0 - uTime * uSpeed);
+                    float streak = smoothstep(0.0, 0.25, flow) * (1.0 - smoothstep(0.65, 1.0, flow));
+
+                    float depthFade = smoothstep(0.0, 0.15, vUv.x) * (1.0 - smoothstep(0.8, 1.0, vUv.x));
+
+                    float tintMix = 0.5 + 0.5 * sin(angle * 2.0 + uTime * 0.2);
+                    vec3 base = mix(uColorA, uColorB, tintMix);
+                    base = mix(base, uColorC, smoothstep(0.2, 0.9, sin(angle * 3.0) * 0.5 + 0.5));
+
+                    float glow = rays * (0.08 + streak * 0.6) * depthFade;
+                    vec3 color = base * glow;
+
+                    gl_FragColor = vec4(color, clamp(glow, 0.0, 0.6) * uOpacity);
+                }
+            `,
+        });
+
+        // --- Tunnel ---
+        const points = [];
+        const tunnelEndZ = 400; 
+        for (let i = 0; i <= 20; i++) {
+            points.push(new THREE.Vector3(Math.sin(i*0.5)*25, Math.cos(i*0.3)*25, i*20));
+        }
+        points.push(new THREE.Vector3(0, 50, tunnelEndZ + 100)); 
+        points.push(new THREE.Vector3(0, 80, tunnelEndZ + 300)); 
+        points.push(new THREE.Vector3(0, 120, tunnelEndZ + 600)); 
+        points.push(new THREE.Vector3(0, 60, tunnelEndZ + 900)); 
+        points.push(new THREE.Vector3(0, -20, tunnelEndZ + 1100)); 
+        const path = new THREE.CatmullRomCurve3(points);
+        const tubeCurve = new THREE.CatmullRomCurve3(path.getPoints(120).slice(0, 80));
+        const tunnelGeo = new THREE.TubeGeometry(tubeCurve, 80, 22, 16, false);
+        const tunnelMesh = new THREE.Mesh(tunnelGeo, tunnelMat);
+        scene.add(tunnelMesh);
+        const wireGeo = new THREE.EdgesGeometry(new THREE.TubeGeometry(tubeCurve, 80, 21, 8, false));
+        scene.add(new THREE.LineSegments(wireGeo, new THREE.LineBasicMaterial({ color: 0x00aaff, opacity: 0.2, transparent: true })));
+
+        // --- Grid & Planets Group ---
+        const gridCenterZ = tunnelEndZ + 1200; 
+        const gridGroup = new THREE.Group();
+        gridGroup.position.set(0, -100, gridCenterZ); 
+        gridGroup.rotation.x = -0.8; 
+        gridGroup.visible = false; 
+        scene.add(gridGroup);
+
+        const blueMat = new THREE.LineBasicMaterial({ color: 0x0077ff, transparent: true, opacity: 0.4, depthWrite: false, blending: THREE.AdditiveBlending });
+        const brightBlueMat = new THREE.LineBasicMaterial({ color: 0x66ccff, transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending });
+
+        for(let i=1; i<=30; i++) { 
+            const radius = i * 200; 
+            const curve = new THREE.EllipseCurve(0, 0, radius, radius, 0, Math.PI*2);
+            const geometry = new THREE.BufferGeometry().setFromPoints(curve.getPoints(128));
+            geometry.rotateX(-Math.PI / 2);
+            gridGroup.add(new THREE.Line(geometry, i%5===0 ? brightBlueMat : blueMat));
+        }
+        
+        const rPositions = [];
+        for(let i=0; i<48; i++) {
+            const angle = (i/48) * Math.PI*2;
+            rPositions.push(0, 0, 0);
+            rPositions.push(Math.cos(angle)*6000, 0, Math.sin(angle)*6000);
+        }
+        const rayGeo = new THREE.BufferGeometry();
+        rayGeo.setAttribute('position', new THREE.Float32BufferAttribute(rPositions, 3));
+        gridGroup.add(new THREE.LineSegments(rayGeo, blueMat));
+
+        gridGroup.add(new THREE.PointLight(0x0099ff, 5, 5000));
+
+        function setGroupOpacity(group, opacity) {
+            group.traverse((obj) => {
+                const mat = obj.material;
+                if (!mat) return;
+                const mats = Array.isArray(mat) ? mat : [mat];
+                mats.forEach((m) => {
+                    if (m.opacity === undefined) return;
+                    if (m.userData.baseOpacity == null) {
+                        m.userData.baseOpacity = m.opacity;
+                    }
+                    m.transparent = true;
+                    m.opacity = m.userData.baseOpacity * opacity;
+                });
+            });
+        }
+        setGroupOpacity(gridGroup, 0);
+        
+        // --- Planets Setup ---
+        const planets = [];
+        function createPlanet(radius, detail, pos, scaleBase, isSpecial = false) {
+            const geometry = new THREE.IcosahedronGeometry(radius, detail);
+            let material;
+            if(isSpecial) {
+                // Golden Star Material
+                material = new THREE.MeshPhongMaterial({ 
+                    map: planetTex, shininess: 100, 
+                    emissive: 0xffaa00, emissiveIntensity: 0.5,
+                    color: 0xffdd88, flatShading: true 
+                });
+            } else {
+                material = new THREE.MeshPhongMaterial({ map: planetTex, shininess: 50, emissive: 0x112244, flatShading: true });
+            }
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.copy(pos);
+            mesh.scale.setScalar(scaleBase);
+            const orbitRadius = Math.sqrt(pos.x * pos.x + pos.z * pos.z);
+            const orbitAngle = Math.atan2(pos.z, pos.x);
+            const orbitSpeed = 0.001 + Math.random() * 0.0025;
+            mesh.userData = { scaleBase: scaleBase, isSpecial: isSpecial, orbitRadius, orbitAngle, orbitSpeed, orbitHeight: pos.y };
+            gridGroup.add(mesh);
+            planets.push(mesh);
+            return mesh;
+        }
+
+        // Random Planets
+        createPlanet(40, 3, new THREE.Vector3(-350, 150, 200), 2);
+        createPlanet(50, 4, new THREE.Vector3(450, 50, -300), 2.5);
+        createPlanet(20, 2, new THREE.Vector3(-100, 300, -100), 1.5);
+        for(let k=0; k<25; k++) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 600 + Math.random() * 1500;
+            const x = Math.cos(angle) * dist;
+            const z = Math.sin(angle) * dist;
+            const y = (Math.random() - 0.5) * 800;
+            const size = 10 + Math.random() * 25;
+            createPlanet(size, 0, new THREE.Vector3(x, y, z), 1 + Math.random());
+        }
+
+        // --- 4. The Special Blob ---
+        const specialPlanet = createPlanet(25, 4, new THREE.Vector3(0, 120, 0), 1.8, true);
+        if (specialPlanet && specialPlanet.userData) {
+            specialPlanet.userData.orbitRadius = 160;
+            specialPlanet.userData.orbitAngle = 0;
+            specialPlanet.userData.orbitSpeed = 0.0018;
+            specialPlanet.userData.orbitHeight = 120;
+            specialPlanet.position.set(specialPlanet.userData.orbitRadius, specialPlanet.userData.orbitHeight, 0);
+        }
+        
+        // Sparkles
+        const sparkleGeo = new THREE.BufferGeometry();
+        const sparklePos = [];
+        for(let i=0; i<100; i++) {
+            const r = 40 + Math.random() * 40; 
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+            sparklePos.push(r * Math.sin(phi) * Math.cos(theta), r * Math.sin(phi) * Math.sin(theta), r * Math.cos(phi));
+        }
+        sparkleGeo.setAttribute('position', new THREE.Float32BufferAttribute(sparklePos, 3));
+        const sparkles = new THREE.Points(sparkleGeo, new THREE.PointsMaterial({
+            color: 0xffffcc, size: 2, transparent: true, opacity: 0.8,
+            blending: THREE.AdditiveBlending, map: starParticleTex, depthWrite: false
+        }));
+        specialPlanet.add(sparkles);
+
+        // Light & Ambient Stars
+        const dirLight = new THREE.DirectionalLight("#fff", 1.5);
+        dirLight.position.set(0, 500, -200);
+        gridGroup.add(dirLight);
+
+        const movingStarsGeo = new THREE.Geometry();
+        for (let i = 0; i < 300; i++) {
+            const particle = new THREE.Vector3((Math.random()-0.5)*1500, (Math.random()-0.5)*600, (Math.random()-0.5)*1500);
+            particle.velocity = THREE.MathUtils.randInt(50, 200);
+            particle.startX = particle.x; particle.startY = particle.y; particle.startZ = particle.z;
+            movingStarsGeo.vertices.push(particle);
+        }
+        const movingStars = new THREE.Points(movingStarsGeo, new THREE.PointsMaterial({ size: 15, color: "#ffffff", transparent: true, opacity: 0.8, map: starParticleTex, blending: THREE.AdditiveBlending, depthWrite: false }));
+        gridGroup.add(movingStars);
+
+        // --- Path Particles: Tunnel -> Space ---
+        const pathStarsCount = 1200;
+        const pathStarsPos = new Float32Array(pathStarsCount * 3);
+        for (let i = 0; i < pathStarsCount; i++) {
+            let base;
+            let t = 0.05;
+            for (let tries = 0; tries < 6; tries++) {
+                t = 0.05 + Math.random() * 0.85;
+                base = path.getPointAt(t);
+                if (base.z < gridCenterZ - 250) break;
+            }
+            if (!base) base = path.getPointAt(0.5);
+            const angle = Math.random() * Math.PI * 2;
+            const radius = 18 + Math.random() * 70;
+            const offsetX = Math.cos(angle) * radius;
+            const offsetY = Math.sin(angle) * radius;
+            const offsetZ = (Math.random() - 0.5) * 60;
+            const idx = i * 3;
+            pathStarsPos[idx] = base.x + offsetX;
+            pathStarsPos[idx + 1] = base.y + offsetY;
+            pathStarsPos[idx + 2] = base.z + offsetZ;
+        }
+        const pathStarsGeo = new THREE.BufferGeometry();
+        pathStarsGeo.setAttribute('position', new THREE.BufferAttribute(pathStarsPos, 3));
+        const pathStarsMat = new THREE.PointsMaterial({
+            size: 4,
+            color: "#ffffff",
+            transparent: true,
+            opacity: 0.6,
+            map: starParticleTex,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        const pathStars = new THREE.Points(pathStarsGeo, pathStarsMat);
+        scene.add(pathStars);
+
+        // --- Post Processing ---
+        const composer = new THREE.EffectComposer(renderer);
+        composer.addPass(new THREE.RenderPass(scene, camera));
+        const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+        bloomPass.threshold = 0.2; bloomPass.strength = 1.8; bloomPass.radius = 0.8;
+        composer.addPass(bloomPass);
+
+        // --- Scroll & Animation ---
+        gsap.registerPlugin(ScrollTrigger);
+        const progress = { total: 0, intro: 0, flight: 0 };
+        const titleAnchor = document.querySelector('.title-anchor');
+        const slide1 = document.querySelector('.slide-1');
+        const slide2 = document.querySelector('.slide-2');
+        const titleFindTop = document.querySelector('.title-find-top');
+        const titleFindBottom = document.querySelector('.title-find-bottom');
+        const telescopeMask = document.querySelector('.telescope-mask');
+        const blackOverlay = document.querySelector('.black-overlay');
+
+        const introTrigger = ScrollTrigger.create({
+            trigger: ".scrollTarget", start: "top top", end: "bottom bottom", scrub: 1,
+            onUpdate: (self) => {
+                const p = self.progress;
+                progress.total = p;
+                const flightStart = 0.7;
+                const tunnelEnd = 0.9;
+                const slide1End = 0.55;
+                const slide1FadeStart = 0.35;
+
+                if (p <= flightStart) {
+                    if (p <= slide1End) {
+                        const t = Math.min(p / slide1End, 1);
+                        const fadeT = Math.min(Math.max((p - slide1FadeStart) / (slide1End - slide1FadeStart), 0), 1);
+                        const x = THREE.MathUtils.lerp(window.innerWidth * 0.9, -window.innerWidth * 1.2, t);
+                        gsap.set(blackOverlay, { opacity: 1, display: 'block' });
+                        gsap.set(slide1, { opacity: 1 - fadeT, display: 'flex' });
+                        gsap.set(titleAnchor, { x });
+                        gsap.set(telescopeMask, { opacity: 0, scale: 0.8 });
+                        gsap.set(slide2, { opacity: 0, display: 'none' });
+                    } else {
+                    pathStars.visible = false;
+                        const maskP = (p - slide1End) / (flightStart - slide1End);
+                        gsap.set(slide1, { opacity: 0, display: 'none' });
+                        gsap.set(slide2, { display: 'block' });
+                        let slideIn = 0, textOpacity = 1, maskOpacity = 1;
+                        const overlayOpacity = Math.max(0.2, 1 - maskP * 4);
+                        gsap.set(blackOverlay, { opacity: overlayOpacity });
+
+                        if (maskP < 0.3) {
+                            const entrance = maskP / 0.3; slideIn = 1 - entrance; textOpacity = entrance;
+                        } else if (maskP > 0.7) {
+                            const exit = (maskP - 0.7) / 0.3; textOpacity = 1 - exit; maskOpacity = 1 - exit; slideIn = 0;
+                        }
+                        gsap.set(telescopeMask, { opacity: maskOpacity, scale: 1 + maskP * 2 });
+                        gsap.set(slide2, { opacity: textOpacity });
+                        gsap.set(titleFindTop, { xPercent: -100 * slideIn });
+                        gsap.set(titleFindBottom, { xPercent: 100 * slideIn });
+                    }
+                    starfieldMesh.visible = true;
+                    pathStars.visible = true;
+                    pathStars.material.opacity = 0.6;
+                    progress.flight = 0; gridGroup.visible = false;
+                } else {
+                    gsap.set(blackOverlay, { display: 'none' });
+                    gsap.set(telescopeMask, { opacity: 0 });
+                    gsap.set(slide1, { display: 'none' });
+                    gsap.set(slide2, { display: 'none' });
+
+                    const tunnelP = Math.min(Math.max((p - flightStart) / (tunnelEnd - flightStart), 0), 1);
+                    const tunnelStrength = Math.min(Math.min(tunnelP * 3, (1 - tunnelP) * 3), 1);
+                    tunnelMat.uniforms.uOpacity.value = tunnelStrength;
+                    tunnelMesh.visible = tunnelStrength > 0.01;
+                    starfieldMesh.visible = true;
+
+                    const postTunnelStart = tunnelEnd - 0.08;
+                    const postTunnelP = Math.min(Math.max((p - postTunnelStart) / 0.26, 0), 1);
+                    gridGroup.visible = p >= postTunnelStart;
+                    setGroupOpacity(gridGroup, postTunnelP);
+
+                    const pathFadeStart = tunnelEnd - 0.1;
+                    const pathFadeP = Math.min(Math.max((p - pathFadeStart) / 0.18, 0), 1);
+                    pathStars.material.opacity = 0.6 * (1 - pathFadeP);
+                    pathStars.visible = pathStars.material.opacity > 0.02;
+                    progress.flight = (p - flightStart) / (1 - flightStart);
+                }
+            }
+        });
+        const initSlide1 = () => {
+            const x = window.innerWidth * 0.9;
+            gsap.set(blackOverlay, { opacity: 1, display: 'block' });
+            gsap.set(slide1, { opacity: 1, display: 'flex' });
+            gsap.set(titleAnchor, { x });
+            gsap.set(slide2, { opacity: 0, display: 'none' });
+            pathStars.visible = true;
+            pathStars.material.opacity = 0.6;
+        };
+        initSlide1();
+        ScrollTrigger.addEventListener('refreshInit', initSlide1);
+
+        // --- Interaction: Raycaster & Events ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const parallax = new THREE.Vector2(0, 0);
+        
+        const nameModal = document.getElementById('nameModal');
+        const starNameInput = document.getElementById('starNameInput');
+        const confirmNameBtn = document.getElementById('confirmNameBtn');
+        const starLabel = document.getElementById('starLabel');
+        const labelText = document.getElementById('labelText');
+        const hoverHint = document.getElementById('hoverHint');
+        
+        let isNaming = false;
+        let starName = "";
+        let starNamed = false;
+
+        // 1. Mouse Move (Hover Effect)
+        window.addEventListener('mousemove', (event) => {
+            if(isNaming) return;
+
+            parallax.x = (event.clientX / window.innerWidth) * 2 - 1;
+            parallax.y = (event.clientY / window.innerHeight) * 2 - 1;
+
+            // 스크롤이 끝부분에 도달했을 때만 호버 작동
+            if(progress.flight < 0.95 || starNamed) {
+                document.body.style.cursor = 'default';
+                hoverHint.style.opacity = 0;
+                return;
+            }
+
+            mouse.x = parallax.x;
+            mouse.y = -parallax.y;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(specialPlanet);
+
+            if (intersects.length > 0) {
+                document.body.style.cursor = 'pointer';
+                hoverHint.style.opacity = 1;
+                hoverHint.style.transform = `translate3d(${event.clientX + 14}px, ${event.clientY - 12}px, 0)`;
+            } else {
+                document.body.style.cursor = 'default';
+                hoverHint.style.opacity = 0;
+            }
+        });
+
+        // 2. Click (Open Modal)
+        window.addEventListener('click', (event) => {
+            if(progress.flight < 0.95) return;
+            if(isNaming) return;
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(specialPlanet);
+            
+            if (intersects.length > 0) {
+                isNaming = true;
+                nameModal.classList.add('active');
+                starNameInput.value = "";
+                setTimeout(() => starNameInput.focus(), 100);
+            }
+        });
+
+        // 3. Confirm Name
+        function confirmName() {
+            const val = starNameInput.value.trim();
+            if(val) {
+                starName = val;
+                labelText.textContent = starName;
+                starNamed = true;
+                nameModal.classList.remove('active');
+                isNaming = false;
+            }
+        }
+        confirmNameBtn.addEventListener('click', confirmName);
+        starNameInput.addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') confirmName();
+        });
+
+        nameModal.addEventListener('click', (e) => {
+            if (e.target !== nameModal) return;
+            nameModal.classList.remove('active');
+            isNaming = false;
+        });
+        
+        // --- Render Loop ---
+        const gridCenterPoint = new THREE.Vector3(0, -100, gridCenterZ); 
+        const blobScale = 3; 
+        const tempV = new THREE.Vector3();
+        const clock = new THREE.Clock();
+
+        function render() {
+            const delta = clock.getDelta();
+            tunnelUniforms.uTime.value += delta;
+            starfieldUniforms.uTime.value += delta * 0.5;
+
+            const travel = Math.min(progress.flight * 0.5, 0.5);
+            const pos = path.getPointAt(travel);
+            camera.position.copy(pos);
+            
+            const transitionStart = 0.4; 
+            if (travel < transitionStart) {
+                const lookTarget = path.getPointAt(Math.min(travel + 0.05, 1));
+                const parallaxStrength = 18;
+                lookTarget.x += parallax.x * parallaxStrength;
+                lookTarget.y += -parallax.y * parallaxStrength;
+                camera.up.set(0, 1, 0);
+                camera.lookAt(lookTarget);
+                scene.fog.density = 0.0006;
+            } else {
+                let t = (travel - transitionStart) * 2.5; 
+                t = Math.max(0, Math.min(1, t)); 
+                const pathLook = path.getPointAt(Math.min(travel + 0.05, 1));
+                const finalLook = new THREE.Vector3().lerpVectors(pathLook, gridCenterPoint, t);
+                const parallaxStrength = 18;
+                finalLook.x += parallax.x * parallaxStrength;
+                finalLook.y += -parallax.y * parallaxStrength;
+                camera.up.set(0, 1, 0);
+                camera.lookAt(finalLook);
+                scene.fog.density = THREE.MathUtils.lerp(0.0006, 0, t);
+            }
+
+            const time = Date.now();
+            planets.forEach(planet => {
+                if (planet.userData) {
+                    planet.userData.orbitAngle += planet.userData.orbitSpeed;
+                    const r = planet.userData.orbitRadius;
+                    const yBase = planet.userData.orbitHeight;
+                    const y = yBase + Math.sin(planet.userData.orbitAngle * 0.6) * 20;
+                    planet.position.set(Math.cos(planet.userData.orbitAngle) * r, y, Math.sin(planet.userData.orbitAngle) * r);
+                }
+                if(planet.geometry.vertices) {
+                    planet.geometry.vertices.forEach(v => {
+                        v.normalize();
+                        let intensity = planet.userData.isSpecial ? blobScale * 0.8 : blobScale;
+                        let distance = planet.geometry.parameters.radius + noise.noise3D(v.x + time * 0.0005, v.y + time * 0.0003, v.z + time * 0.0008) * intensity;
+                        v.multiplyScalar(distance);
+                    });
+                    planet.geometry.verticesNeedUpdate = true; 
+                    planet.geometry.normalsNeedUpdate = true; 
+                    planet.geometry.computeVertexNormals();
+                }
+                planet.rotation.y += 0.002;
+            });
+
+            if(sparkles) {
+                sparkles.rotation.y -= 0.005; 
+                sparkles.rotation.z += 0.002;
+                const sScale = 1 + Math.sin(time * 0.002) * 0.05;
+                sparkles.scale.set(sScale, sScale, sScale);
+            }
+
+            movingStars.geometry.vertices.forEach(v => {
+                v.x += (0 - v.x) / v.velocity; 
+                v.y += (0 - v.y) / v.velocity; 
+                v.z += (0 - v.z) / v.velocity;
+                v.velocity -= 0.3;
+                if (Math.abs(v.x) <= 10 && Math.abs(v.z) <= 10) { 
+                    v.x = v.startX; v.y = v.startY; v.z = v.startZ; 
+                    v.velocity = THREE.MathUtils.randInt(50, 300); 
+                }
+            });
+            movingStars.geometry.verticesNeedUpdate = true;
+            gridGroup.rotation.y += 0.0008;
+
+            // [FIXED] LABEL POSITIONING LOGIC
+            if (starNamed && specialPlanet) {
+                if (progress.flight < 0.95) {
+                    starLabel.style.opacity = 0;
+                } else {
+                    specialPlanet.updateMatrixWorld(); // 중요: 월드 행렬 업데이트
+                    specialPlanet.getWorldPosition(tempV);
+                    tempV.y += 50; // 이름표를 별 위에 띄움
+                    
+                    // 3D 좌표를 2D 화면 좌표로 변환
+                    tempV.project(camera);
+
+                    // 화면 밖으로 나가는 것 방지 (NDC 좌표 기준 -1 ~ 1 사이여야 함)
+                    // z > 1 은 카메라 뒤쪽이나 렌더링 범위 밖을 의미
+                    if (tempV.z > 1 || Math.abs(tempV.x) > 1.1 || Math.abs(tempV.y) > 1.1) {
+                        starLabel.style.opacity = 0;
+                    } else {
+                        const x = (tempV.x * .5 + .5) * window.innerWidth;
+                        const y = (-(tempV.y * .5) + .5) * window.innerHeight;
+                        
+                        // translate3d로 하드웨어 가속 사용
+                        starLabel.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -100%)`;
+                        starLabel.style.opacity = 1;
+                    }
+                }
+            } else {
+                starLabel.style.opacity = 0;
+            }
+
+            composer.render();
+            requestAnimationFrame(render);
+        }
+        render();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
